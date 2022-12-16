@@ -4,12 +4,13 @@ import ray
 from ray.ml import ScalingConfig
 from ray.ml.preprocessors import StandardScaler
 from ray.ml.train.integrations.xgboost import XGBoostTrainer
+from sklearn.datasets import load_breast_cancer
 
 if __name__ == '__main__':
     # Load data.
-    dataset = ray.data.read_csv("s3://anonymous@air-example-data/breast_cancer.csv")
+    data = load_breast_cancer(as_frame=True)
 
-    dataset_arrow = ray.data.from_arrow()
+    dataset = ray.data.from_pandas(data['data'])
 
     # Split data into train and validation.
     train_dataset, valid_dataset = dataset.train_test_split(test_size=0.3)
