@@ -1,24 +1,8 @@
-import ray  # .. of course
-import gym
-import matplotlib.pyplot as plt
-import numpy as np
-import os
-import pandas as pd
-import pprint
 from scipy.stats import sem  # standard error of the mean
-
 from recommender_system_env import RecommSys001
-
-env = RecommSys001(config={
-    "num_features": 20,  # E (embedding size)
-
-    "num_items_in_db": 100,  # total number of items in our database
-    "num_items_to_select_from": 10,  # number of items to present to the agent to pick a k-slate from
-    "slate_size": 1,  # k
-    "num_users_in_db": 1,  # total number  of users in our database
-})
-env
-
+import pprint
+import matplotlib.pyplot as plt
+import ray
 
 # !LIVE CODING!
 
@@ -58,10 +42,16 @@ def env_test(env):
 
     return env_mean_random_reward, sem(episode_rewards)
 
+env = RecommSys001(config={
+    "num_features": 20,  # E (embedding size)
 
+    "num_items_in_db": 100,  # total number of items in our database
+    "num_items_to_select_from": 10,  # number of items to present to the agent to pick a k-slate from
+    "slate_size": 1,  # k
+    "num_users_in_db": 1,  # total number  of users in our database
+})
 
 if __name__ == "__main__":
-    env_mean_random_reward, env_sem_random_reward = env_test(env)
 
     # Start a new instance of Ray (when running this tutorial locally) or
     # connect to an already running one (when running this tutorial through Anyscale).
@@ -75,7 +65,7 @@ if __name__ == "__main__":
     # Import a Trainable (one of RLlib's built-in algorithms):
     # We start our endeavor with the Bandit algorithms here b/c they are specialized in solving
     # n-arm/recommendation problems.
-    from ray.rllib.agents.bandit import BanditLinUCBTrainer
+    from ray.rllib.algorithms.bandit import BanditLinUCBTrainer
 
     # Environment wrapping tools for:
     # a) Converting MultiDiscrete action space (k-slate recommendations) down to Discrete action space (we only have k=1 for now anyways).
@@ -83,9 +73,7 @@ if __name__ == "__main__":
     from ray.rllib.env.wrappers.recsim import MultiDiscreteToDiscreteActionWrapper, \
         RecSimObservationBanditWrapper
 
-    from ray import tune
-
-    tune.register_env(
+    ray.tune.register_env(
         "recomm-sys-001-for-bandits",
         lambda config: RecSimObservationBanditWrapper(MultiDiscreteToDiscreteActionWrapper(RecommSys001(config))))
 
@@ -110,60 +98,14 @@ if __name__ == "__main__":
 
     # Train for n iterations (timesteps) and collect n-arm rewards.
     rewards = []
-    for _ in range(300):
+    for i in range(300):
         result = bandit_trainer.train()
+        pprint(f"Iter: {i}; avg. reward={result['episode_reward_mean']}")
         rewards.append(result["episode_reward_mean"])
-        print(".", end="")
-    print(rewards)
+        pprint(".", end="")
+    pprint(rewards)
     # Plot per-timestep (episode) rewards.
     plt.figure(figsize=(10,7))
     plt.plot(rewards)#x=[i for i in range(len(rewards))], y=rewards, xerr=None, yerr=[sem(rewards) for i in range(len(rewards))])
     plt.title("Mean reward")
     plt.xlabel("Time/Training steps")
-
-    # Add mean random baseline reward (red line).
-    plt.axhline(y=env_mean_random_reward, color="r", linestyle="-")
-    plt.savefig("bandit_lin_ucb_reward.png")
-    plt.show()
-
-
-
-    # Update our env_config: Making things harder.
-    bandit_config.update({
-        "env_config": {
-            "num_features": 20,  # E (no change)
-
-            "num_items_in_db": 100,  # (no change)
-            "num_items_to_select_from": 10,  # D (no change)
-            "slate_size": 2,  # k=2
-
-            "num_users_in_db": None,  # More users!
-            "user_time_budget": 10.0,  # Longer episodes.
-        },
-    })
-
-    # Re-computing our random baseline.
-    harder_env = RecommSys001(config=bandit_config["env_config"])
-    harder_env_mean_random_reward, _ = env_test(harder_env)
-
-
-    # Create the RLlib Trainer using above config.
-    bandit_trainer = BanditLinUCBTrainer(config=bandit_config)
-
-    # Train for n iterations (timesteps) and collect n-arm rewards.
-    rewards = []
-    for _ in range(1200):
-        result = bandit_trainer.train()
-        rewards.append(result["episode_reward_mean"])
-        print(".", end="")
-
-    # Plot per-timestep (episode) rewards.
-    plt.figure(figsize=(10,7))
-    plt.plot(rewards)#x=[i for i in range(len(rewards))], y=rewards, xerr=None, yerr=[sem(rewards) for i in range(len(rewards))])
-    plt.title("Mean reward")
-    plt.xlabel("Time/Training steps")
-
-    # Add mean random baseline reward (red line).
-    plt.axhline(y=harder_env_mean_random_reward, color="r", linestyle="-")
-    plt.savefig("bandit_lin_ucb_reward_harder.png")
-    plt.show()
