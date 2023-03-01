@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ngnix-image
+spec:
+  containers:
+      image: phx.ocir.io/ansh81vru1zp/project01/ngnix-lb:latest
+      imagePullPolicy: Always
+      ports:
+      - name: nginx
+        containerPort: 8080
+        protocol: TCP
+  imagePullSecrets:
+    - name: ocirsecret
