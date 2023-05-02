@@ -52,7 +52,8 @@ resource "azurerm_kubernetes_cluster" "ray_aks_cluster" {
     name    = "aksnodepool"
     node_count = 1
     vnet_subnet_id = azurerm_subnet.ray_aks_subnet.id
-    vm_size = "Standard_D2s_v3"
+    vm_size = "Standard_D4s_v3"
+    temporary_name_for_rotation = true
   }
   identity {
     type = "SystemAssigned"
